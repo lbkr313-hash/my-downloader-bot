@@ -2,10 +2,10 @@ import telebot
 from telebot import types
 import yt_dlp
 import os
+import time  # تم إضافة المكتبة هنا
 from concurrent.futures import ThreadPoolExecutor
 
 # --- إعدادات البوت والقنوات ---
-# ملاحظة: تم حذف سطر البروكسي لأنه يعطل العمل على Koyeb
 API_TOKEN = '8281760855:AAFzk0H_uL2HLPZxg7K63OK5bvavUhrNypg'
 CHANNELS = ['@dhjbr', '@hhhhh3i'] 
 
@@ -28,7 +28,6 @@ def check_sub(u_id):
 def handle_messages(m):
     u_id, c_id = m.from_user.id, m.chat.id
     
-    # 1. فحص الاشتراك الإجباري
     if not check_sub(u_id):
         kb = types.InlineKeyboardMarkup(row_width=2)
         btn1 = types.InlineKeyboardButton("قناة 1 ✅", url="https://t.me/dhjbr")
@@ -39,7 +38,6 @@ def handle_messages(m):
         bot.send_message(c_id, "عذراً، يجب عليك الاشتراك في قنوات البوت أولاً!", reply_markup=kb)
         return
 
-    # 2. معالجة الأوامر والبحث
     text = m.text
     if text.startswith('/start'):
         bot.reply_to(m, "أهلاً بك في بوت التحميل 🚀\nأرسل رابط فيديو أو اكتب اسم للبحث عنه.")
@@ -89,23 +87,25 @@ def callback_query(call):
         bot.delete_message(c_id, call.message.message_id)
 
 def show_formats(c_id, url):
-    # استخراج ID الفيديو لحفظه في الخريطة
-    v_id = url.split("v=")[-1] if "v=" in url else url.split("/")[-1]
-    v_id = v_id.split("&")[0].split("?")[0]
-    urls_map[v_id] = url
-    
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("🎬 فيديو 144p", callback_data=f"q144_{v_id}"),
-           types.InlineKeyboardButton("🎬 فيديو 360p", callback_data=f"q360_{v_id}"))
-    kb.add(types.InlineKeyboardButton("🎵 ملف صوتي (MP3)", callback_data=f"aud_{v_id}"))
-    bot.send_message(c_id, "اختر الصيغة والجودة:", reply_markup=kb)
+    try:
+        v_id = url.split("v=")[-1] if "v=" in url else url.split("/")[-1]
+        v_id = v_id.split("&")[0].split("?")[0]
+        urls_map[v_id] = url
+        
+        kb = types.InlineKeyboardMarkup()
+        kb.add(types.InlineKeyboardButton("🎬 فيديو 144p", callback_data=f"q144_{v_id}"),
+               types.InlineKeyboardButton("🎬 فيديو 360p", callback_data=f"q360_{v_id}"))
+        kb.add(types.InlineKeyboardButton("🎵 ملف صوتي (MP3)", callback_data=f"aud_{v_id}"))
+        bot.send_message(c_id, "اختر الصيغة والجودة:", reply_markup=kb)
+    except:
+        bot.send_message(c_id, "❌ رابط غير صحيح.")
 
 def start_download(c_id, url, quality):
     status_msg = bot.send_message(c_id, "🚀 جاري التحميل، يرجى الانتظار...")
     try:
-        # تحديد الجودة
         fmt = 'best[height<=144]' if quality == 'q144' else 'best[height<=360]' if quality == 'q360' else 'bestaudio'
-        out_path = f"file_{c_id}_{int(os.time.time())}.%(ext)s"
+        # تم تصحيح السطر أدناه: استخدام time.time() بدلاً من os.time.time()
+        out_path = f"file_{c_id}_{int(time.time())}.%(ext)s"
         
         ydl_opts = {
             'format': fmt,
@@ -133,4 +133,4 @@ def start_download(c_id, url, quality):
         bot.send_message(c_id, f"❌ حدث خطأ أثناء التحميل: {str(e)}")
 
 print("البوت يعمل الآن بكفاءة... ✅")
-bot.polling(none_stop=True)
+bot.infinity_polling()
